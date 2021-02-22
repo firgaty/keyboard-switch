@@ -1,6 +1,16 @@
 # keyboard-switch
 
-Simple, yet effective, script written in Python to change keyboard layout by using setxkbmap.
+Simple, yet effective, script written in Python to change keyboard layout on Linux by using setxkbmap.
+
+## Why
+
+Maybe my google-fu failed me. Maybe I didn't read enough of the `IBus`, `fcitx`, `xkb-switch` documentation. Maybe. But I spent enough time doing so without reaching a satisfying answer as to how to switch layouts using them while also switching mapping options and variants all at the same time. Neither of the mentioned three options allowed to do so AFAIK. So I decided to write this little script.
+
+## What it is
+
+It's a script that you use to switch between registered layouts via CLI. 
+
+To register a layout, set yourself to it (via `setxkbmap`) and call `kbswitch -a <name>`, `<name>` being how you want your layout to be remembered as. `keyboard-switch` will store the layout's current `model`, `layout`, `variant` and `option` list under the name `<name>`. Next, anytime you will use this script to "switch" to this layout (e.g `kbswitch -s <name>`), it will call `setxkbmap` with the aforementioned registered options.
 
 ## Usage
 
@@ -170,3 +180,22 @@ If you want to have a notification of a layout switch via `libnotify`, you may a
 ```sh
 $ kbswitch -n --notify  # changes to next layout and sends a notification
 ```
+
+## Ideas on how to use
+
+Set `kbswitch -n --notify` as a hotkey in your windows manager config.
+
+e.g i3:
+
+```i3
+# Switch to next keyboard layout using mod + Space
+bindsym $mod+space exec --no-startup-id kbswitch -n --notify
+```
+
+## IBus
+
+If you desperately need `IBus`, as I do because Telegram doesn't register dead keys and I type in french; in `IBus`'s `Preference > Advanced > Keyboard Layout`, check `Use system keyboard layout`. You will be able to register dead keys whit `IBus` while using the system keyboard (set by `setxkbmap`).
+
+## Storage
+
+All registered layouts are stored as JSON strings in `$XDG_CONFIG_HOME/keyboard-switch/`, usually being `~/.config/keyboard-switch/`, in the file `mappings`. the current mapping/layout is saved in the file `current` in the same directory.
