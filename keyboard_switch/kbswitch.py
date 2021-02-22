@@ -1,17 +1,16 @@
 #!/usr/bin/env python
 # PYZSHCOMPLETE_OK
 # PYTHON_ARGCOMPLETE_OK
+import argparse
+import json
+import re
+import subprocess
+
 import argcomplete
 import pyzshcomplete
-import subprocess
-import argparse
 from xdg import XDG_CONFIG_HOME
-import json
 
-# from typing import Union
-import re
-
-CONFIG_PATH = XDG_CONFIG_HOME.joinpath("kbswitch")
+CONFIG_PATH = XDG_CONFIG_HOME.joinpath("keyboard-switch")
 SAVE_FILE_PATH = CONFIG_PATH.joinpath("mappings")
 CURRENT_FILE_PATH = CONFIG_PATH.joinpath("current")
 
@@ -67,16 +66,26 @@ def load_current():
 
 
 def add_mapping(mapping: dict[str, str], order: int = -1) -> None:
-    if mapping["name"] in MAPPINGS:
-        MAPPINGS[mapping["name"]] = mapping
-        return
-
     MAPPINGS[mapping["name"]] = mapping
 
-    if order < 0 or order > len(MAPPING_ORDER):
+    if mapping['name'] in MAPPING_ORDER:
+        return
+
+    if order < 0 or order >= len(MAPPING_ORDER):
         MAPPING_ORDER.append(mapping["name"])
     else:
-        MAPPING_ORDER[order] = mapping["name"]
+        MAPPING_ORDER.insert(order, mapping["name"])
+
+
+def reorder(from_: int, to: int) -> None:
+    length = len(MAPPING_ORDER)
+
+    if from_ < length:
+        m = MAPPINGS[MAPPING_ORDER.pop(from_)]
+        add_mapping(m, to)
+    save_to_file()
+    CURRENT_MAPPING[0] = 0
+    save_current()
 
 
 def add_current_layout(name: str, order: int = -1, current: bool = False) -> None:
@@ -97,35 +106,39 @@ def set_mapping(order: int) -> None:
         CURRENT_MAPPING[0] = order
         save_current()
 
+
 def set_mapping_name(name: str) -> None:
     if name not in MAPPINGS:
         return
-    
+
     for i, m in enumerate(MAPPING_ORDER):
-        if m['name'] == name:
+        if m == name:
             set_mapping(i)
             return
-        
+
+
 def remove_mapping(order: int) -> None:
     if order >= len(MAPPING_ORDER):
         return
-    
+
     MAPPING_ORDER.pop(order)
 
     if order >= len(MAPPING_ORDER):
         order = 0
-    
+
     save_to_file()
     save_current()
-    
+
+
 def remove_mapping_name(mapping_name: str) -> None:
     if mapping_name not in MAPPINGS:
         return
-    
+
     for i, m in enumerate(MAPPING_ORDER):
         if m == mapping_name:
             remove_mapping(i)
             return
+
 
 def set_layout(name: str) -> None:
     if name not in MAPPINGS:
@@ -143,6 +156,10 @@ def set_layout(name: str) -> None:
 
 
 def print_mapping(name: str) -> None:
+    if MAPPING_ORDER == []:
+        print_empty()
+        return
+    
     m = MAPPINGS[name]
     print(
         f"{name}\n  model:\t{m['model']}\n  layout:\t{m['layout']}"
@@ -151,6 +168,10 @@ def print_mapping(name: str) -> None:
 
 
 def print_order() -> None:
+    if MAPPING_ORDER == []:
+        print_empty()
+        return
+    
     for i, m in enumerate(MAPPING_ORDER):
         if CURRENT_MAPPING[0] == i:
             print(f"+ {i:>2} {m}")
@@ -158,10 +179,33 @@ def print_order() -> None:
             print(f"  {i:>2} {m}")
 
 
+def print_empty() -> None:
+    print("No keyboard mapping were found.\nAdd a new mapping using `kbswitch -a <name>`.\nSee help with `kbswitch -h`.")
+
+def notify_current():
+    import gi
+
+    gi.require_version("Notify", "0.7")
+
+    from gi.repository import Notify
+    
+    mapping = MAPPINGS[MAPPING_ORDER[CURRENT_MAPPING[0]]]
+
+    Notify.init("keyboard-switch")
+    Msg = Notify.Notification.new(
+        "keyboard-switch", f"{mapping['name']}\n[{mapping['layout']}]", "dialog-information"
+    )
+    Msg.show()
+
+
 def next_mapping() -> None:
     set_mapping((CURRENT_MAPPING[0] + 1) % len(MAPPING_ORDER))
 
-def main_(args):
+
+def previous_mapping() -> None:
+    set_mapping((CURRENT_MAPPING[0] - 1 + len(MAPPING_ORDER)) % len(MAPPING_ORDER))
+
+def sub_main(args):
     if not SAVE_FILE_PATH.exists():
         CONFIG_PATH.mkdir(parents=True, exist_ok=True)
     else:
@@ -174,7 +218,7 @@ def main_(args):
         print_mapping(MAPPING_ORDER[CURRENT_MAPPING[0]])
         return
 
-    if args["print"]:
+    if args["list"]:
         print_order()
         return
 
@@ -186,33 +230,38 @@ def main_(args):
     if args["add"]:
         add_current_layout(args["add"][0], current=True)
         return
-    
+
     if len(MAPPING_ORDER) <= 0:
         return
 
+    if args["remove_number"]:
+        remove_mapping(int(args["remove_number"][0]))
+        return
+    if args["remove"]:
+        remove_mapping_name(args["remove"][0])
+        return
+    if args['order']:
+        reorder(args['order'][0], args['order'][1])
+        return
+    
     if args["next"]:
         next_mapping()
-        return
-
-    if args["set_number"]:
+    elif args['previous']:
+        previous_mapping()
+    elif args["set_number"]:
         set_mapping(int(args["set_number"][0]))
-        return
-    
-    if args["set"]:
-        set_mapping_name(int(args))
-        return
-    
-    if args['remove_number']:
-        remove_mapping(int(args['remove_number'][0]))
-        
-    if args['remove']:
-        remove_mapping_name(args['remove'][0])
+    elif args["set"]:
+        set_mapping_name(args["set"][0])
+
+    if args["notify"]:
+        notify_current()
 
 
-if __name__ == "__main__":
+def main():
     parser = argparse.ArgumentParser(prog="kbswitch")
 
     parser.add_argument("-n", "--next", help="Next mapping", action="store_true")
+    parser.add_argument("-p", "--previous", help="Previous mapping", action="store_true")
     parser.add_argument(
         "-s",
         "--set",
@@ -226,7 +275,7 @@ if __name__ == "__main__":
         "--set-number",
         help="Set current mapping to NUMBER",
         nargs=1,
-        metavar="NUMBER",
+        metavar="N",
         type=int,
     )
     parser.add_argument(
@@ -268,9 +317,9 @@ if __name__ == "__main__":
         action="store_true",
     )
     parser.add_argument(
-        "-p",
-        "--print",
-        help="Print layouts order",
+        "-l",
+        "--list",
+        help="Lists layouts in order",
         action="store_true",
     )
     parser.add_argument(
@@ -279,8 +328,17 @@ if __name__ == "__main__":
         help="Print layouts in order with details",
         action="store_true",
     )
+    parser.add_argument(
+        "--notify",
+        help="Prints change to notification window using libnotify",
+        action="store_true",
+    )
 
     argcomplete.autocomplete(parser)
     pyzshcomplete.autocomplete(parser)
     args = vars(parser.parse_args())
-    main_(args)
+    sub_main(args)
+
+
+if __name__ == "__main__":
+    main()
