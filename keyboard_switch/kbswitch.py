@@ -259,7 +259,14 @@ def sub_main(args):
 
 def main():
     parser = argparse.ArgumentParser(prog="kbswitch")
-
+    parser.add_argument(
+        "-a",
+        "--add",
+        help="Add/Register current mapping with name NAME",
+        nargs=1,
+        metavar="NAME",
+        type=str,
+    )
     parser.add_argument("-n", "--next", help="Next mapping", action="store_true")
     parser.add_argument("-p", "--previous", help="Previous mapping", action="store_true")
     parser.add_argument(
@@ -277,14 +284,6 @@ def main():
         nargs=1,
         metavar="N",
         type=int,
-    )
-    parser.add_argument(
-        "-a",
-        "--add",
-        help="Add current mapping with name NAME",
-        nargs=1,
-        metavar="NAME",
-        type=str,
     )
     parser.add_argument(
         "-r",

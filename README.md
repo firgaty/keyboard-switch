@@ -1,6 +1,6 @@
 # keyboard-switch
 
-Simple, yet effective, script written in Python to change keyboard layout on Linux by using setxkbmap.
+Simple, yet effective, script written in Python to change keyboard layout on Linux by using `setxkbmap`.
 
 ## Why
 
@@ -19,11 +19,11 @@ usage: kbswitch [-h] [-n] [-p] [-s NAME] [-S N] [-a NAME] [-r NAME] [-R N] [-o F
 
 optional arguments:
   -h, --help            show this help message and exit
+  -a NAME, --add NAME   Add/Register current mapping with name NAME
   -n, --next            Next mapping
   -p, --previous        Previous mapping
   -s NAME, --set NAME   Set current mapping to NAME
   -S N, --set-number N  Set current mapping to NUMBER
-  -a NAME, --add NAME   Add current mapping with name NAME
   -r NAME, --remove NAME
                         Remove mapping with name NAME
   -R N, --remove-number N
@@ -134,7 +134,7 @@ $ kbswitch -R 2  # Remove by position
 - __Names in order__:
 
 ```sh
-$ kbswitch -l  # print
+$ kbswitch -l  # list
 +  0 gb_qwerty
    1 gb_colemak
    2 fr_colemak
@@ -194,8 +194,8 @@ bindsym $mod+space exec --no-startup-id kbswitch -n --notify
 
 ## IBus
 
-If you desperately need `IBus`, as I do because Telegram doesn't register dead keys and I type in french; in `IBus`'s `Preference > Advanced > Keyboard Layout`, check `Use system keyboard layout`. You will be able to register dead keys whit `IBus` while using the system keyboard (set by `setxkbmap`).
+If you desperately need `IBus`, as I do because Telegram doesn't register dead keys and I type in french; in `IBus`'s `Preference > Advanced > Keyboard Layout`, check `Use system keyboard layout`. You will be able to register dead keys with `IBus` while using the system keyboard set by `setxkbmap`.
 
 ## Storage
 
-All registered layouts are stored as JSON strings in `$XDG_CONFIG_HOME/keyboard-switch/`, usually being `~/.config/keyboard-switch/`, in the file `mappings`. the current mapping/layout is saved in the file `current` in the same directory.
+All registered layouts are stored as JSON strings in `$XDG_CONFIG_HOME/keyboard-switch/`, usually being `~/.config/keyboard-switch/`, in the file `mappings`. The current mapping/layout is saved in the file `current` in the same directory.
