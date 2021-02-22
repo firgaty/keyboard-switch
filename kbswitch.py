@@ -1,3 +1,8 @@
+#!/usr/bin/env python
+# PYZSHCOMPLETE_OK
+# PYTHON_ARGCOMPLETE_OK
+import argcomplete
+import pyzshcomplete
 import subprocess
 import argparse
 from xdg import XDG_CONFIG_HOME
@@ -61,12 +66,6 @@ def load_current():
         CURRENT_MAPPING[0] = int(file.readline().strip())
 
 
-def remove_mapping(mapping_name: str) -> None:
-    for i, m in enumerate(MAPPINGS):
-        if m["name"] == mapping_name:
-            MAPPINGS.pop(i)
-
-
 def add_mapping(mapping: dict[str, str], order: int = -1) -> None:
     if mapping["name"] in MAPPINGS:
         MAPPINGS[mapping["name"]] = mapping
@@ -98,6 +97,35 @@ def set_mapping(order: int) -> None:
         CURRENT_MAPPING[0] = order
         save_current()
 
+def set_mapping_name(name: str) -> None:
+    if name not in MAPPINGS:
+        return
+    
+    for i, m in enumerate(MAPPING_ORDER):
+        if m['name'] == name:
+            set_mapping(i)
+            return
+        
+def remove_mapping(order: int) -> None:
+    if order >= len(MAPPING_ORDER):
+        return
+    
+    MAPPING_ORDER.pop(order)
+
+    if order >= len(MAPPING_ORDER):
+        order = 0
+    
+    save_to_file()
+    save_current()
+    
+def remove_mapping_name(mapping_name: str) -> None:
+    if mapping_name not in MAPPINGS:
+        return
+    
+    for i, m in enumerate(MAPPING_ORDER):
+        if m == mapping_name:
+            remove_mapping(i)
+            return
 
 def set_layout(name: str) -> None:
     if name not in MAPPINGS:
@@ -133,7 +161,6 @@ def print_order() -> None:
 def next_mapping() -> None:
     set_mapping((CURRENT_MAPPING[0] + 1) % len(MAPPING_ORDER))
 
-
 def main_(args):
     if not SAVE_FILE_PATH.exists():
         CONFIG_PATH.mkdir(parents=True, exist_ok=True)
@@ -156,6 +183,13 @@ def main_(args):
             print_mapping(m)
         return
 
+    if args["add"]:
+        add_current_layout(args["add"][0], current=True)
+        return
+    
+    if len(MAPPING_ORDER) <= 0:
+        return
+
     if args["next"]:
         next_mapping()
         return
@@ -163,9 +197,16 @@ def main_(args):
     if args["set_number"]:
         set_mapping(int(args["set_number"][0]))
         return
-
-    if args["add"]:
-        add_current_layout(args["add"][0], current=True)
+    
+    if args["set"]:
+        set_mapping_name(int(args))
+        return
+    
+    if args['remove_number']:
+        remove_mapping(int(args['remove_number'][0]))
+        
+    if args['remove']:
+        remove_mapping_name(args['remove'][0])
 
 
 if __name__ == "__main__":
@@ -197,6 +238,22 @@ if __name__ == "__main__":
         type=str,
     )
     parser.add_argument(
+        "-r",
+        "--remove",
+        help="Remove mapping with name NAME",
+        nargs=1,
+        metavar="NAME",
+        type=str,
+    )
+    parser.add_argument(
+        "-R",
+        "--remove-number",
+        help="Remove mapping with order N",
+        nargs=1,
+        metavar="N",
+        type=int,
+    )
+    parser.add_argument(
         "-o",
         "--order",
         help="Reorder mapping at place FROM to place TO",
@@ -223,5 +280,7 @@ if __name__ == "__main__":
         action="store_true",
     )
 
+    argcomplete.autocomplete(parser)
+    pyzshcomplete.autocomplete(parser)
     args = vars(parser.parse_args())
     main_(args)
